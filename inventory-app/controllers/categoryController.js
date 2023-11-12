@@ -15,7 +15,26 @@ exports.category_list = asyncHandler(async (req, res, next) => {
 
 // Display detail page for a specific category.
 exports.category_detail = asyncHandler(async (req, res, next) => {
-  res.send(`NOT IMPLEMENTED: category detail: ${req.params.id}`);
+  const [category, categoryItems] = await Promise.all([
+    Category.findById(req.params.id).exec(),
+    Item.find({ category: req.params.id })
+    .populate('name')
+    .sort({ name: 1 })
+    .exec(),
+  ])
+
+  if (category === null) {
+    // No results.
+    const err = new Error("Category not found");
+    err.status = 404;
+    return next(err);
+  }
+
+  res.render("category_detail", {
+    title: "Category Detail",
+    category: category,
+    category_items: categoryItems,
+  });
 });
 
 // Display category create form on GET.

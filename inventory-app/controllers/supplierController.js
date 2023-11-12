@@ -15,7 +15,26 @@ exports.supplier_list = asyncHandler(async (req, res, next) => {
 
 // Display detail page for a specific supplier.
 exports.supplier_detail = asyncHandler(async (req, res, next) => {
-  res.send(`NOT IMPLEMENTED: supplier detail: ${req.params.id}`);
+  const [supplier, supplierItems] = await Promise.all([
+    Supplier.findById(req.params.id).exec(),
+    Item.find({ suppliers: req.params.id })
+    .populate('name')
+    .sort({ name: 1 })
+    .exec(),
+  ])
+
+  if (supplier === null) {
+    // No results.
+    const err = new Error("Supplier not found");
+    err.status = 404;
+    return next(err);
+  }
+
+  res.render("supplier_detail", {
+    title: "Supplier Detail",
+    supplier: supplier,
+    supplier_items: supplierItems,
+  });
 });
 
 // Display supplier create form on GET.

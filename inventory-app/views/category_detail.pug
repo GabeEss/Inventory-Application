@@ -1,0 +1,15 @@
+extends layout
+
+block content
+
+  h1 #{category.name}
+
+  div(style='margin-left:20px;margin-top:20px')
+
+    dl
+      each item in category_items
+        dt
+          a(href=item.url) #{item.name}
+
+      else
+        p This category has no items
