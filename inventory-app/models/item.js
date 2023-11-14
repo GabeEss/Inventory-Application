@@ -7,8 +7,8 @@ const ItemSchema = new Schema({
   description: { type: String, required: true, maxLength: 200 },
   price: { type: Number, required: true },
   inStock: { type: Number, required: true },
-  category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
-  suppliers: [{ type: Schema.Types.ObjectId, ref: "Supplier", required: true }],
+  category: { type: Schema.Types.ObjectId, ref: "Category" },
+  suppliers: [{ type: Schema.Types.ObjectId, ref: "Supplier" }],
 });
 
 // Virtual for item's URL

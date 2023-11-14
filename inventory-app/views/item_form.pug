@@ -1,0 +1,35 @@
+extends layout
+
+block content
+  h1 #{title}
+
+  form(method='POST' action='')
+    div.form-group
+      label(for='name') Item:
+      input#name.form-control(type='text', placeholder='Item name.' name='name' value=(undefined===item ? '' : item.name) required)
+
+      label(for='description') Description:
+      input#description.form-control(type='text', placeholder='Describe the item.' name='description' value=(undefined===item ? '' : item.description) required)
+
+      label(for='price') Price:
+      input#price.form-control(type='number', placeholder='The price of the item.' name='price' value=(undefined===item ? '' : item.price) step='0.01' required)
+
+      label(for='inStock') Number of Items In-Stock:
+      input#inStock.form-control(type='number', placeholder='Number of items in-stock.' name='inStock' value=(undefined===item ? '' : item.inStock) step='1' required)
+
+      label(for="category") Category:
+      select(name="category" required)
+        each category in allCategories
+          option(value=category._id)= category.name
+
+      label(for="suppliers") Suppliers:
+      select(name="suppliers" multiple)
+        each supplier in allSuppliers
+          option(value=supplier._id)= supplier.name
+
+    button.btn.btn-primary(type='submit') Submit
+
+  if errors
+   ul
+    for error in errors
+     li!= error.msg
