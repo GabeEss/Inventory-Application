@@ -84,14 +84,52 @@ exports.category_create_post = [
   }),
 ];
 
-// Display category delete form on GET.
+// Display Category delete form on GET.
 exports.category_delete_get = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: category delete GET");
+  // Get details of category
+  const category = await Category.findById(req.params.id).exec();
+
+  if (category === null) {
+    // No results.
+    res.redirect("/catalog/categories");
+  }
+
+  // Find items that reference the category
+  const itemsWithinCategory = await Item.find({ category: req.params.id }).exec();
+
+  res.render("category_delete", {
+    title: "Delete Category",
+    category: category,
+    itemsWithinCategory: itemsWithinCategory,
+  });
 });
 
 // Handle category delete on POST.
 exports.category_delete_post = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: category delete POST");
+  try {
+    const [category, itemsWithinCategory] = await Promise.all([
+      Category.findById(req.params.id).exec(),
+      Item.find({ category: req.params.id }).exec(),
+    ])
+
+    // If there are items belonging to this category.
+    if (itemsWithinCategory.length > 0) {
+      return res.render("category_delete", {
+        title: "Delete Category",
+        category: category,
+        itemsWithinCategory: itemsWithinCategory,
+      });
+    }
+
+    // Proceed with deleting the category
+    await Category.findByIdAndDelete(req.params.id).exec();
+
+    res.redirect("/catalog/categories");
+
+  } catch(error) {
+    console.log(error);
+  }
+  
 });
 
 // Display category update form on GET.

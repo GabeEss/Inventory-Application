@@ -15,3 +15,7 @@ block content
       each supplier in item.suppliers
         dt
           a(href=supplier.url) #{supplier.name}
+  
+  hr
+  p
+  a(href=item.url+'/delete') Delete item
