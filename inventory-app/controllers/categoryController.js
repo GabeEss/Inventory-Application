@@ -134,10 +134,62 @@ exports.category_delete_post = asyncHandler(async (req, res, next) => {
 
 // Display category update form on GET.
 exports.category_update_get = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: category update GET");
+  // Get category and items from form.
+  const [category, itemsWithinCategory] = await Promise.all([
+    Category.findById(req.params.id).exec(),
+    Item.find({ category: req.params.id }).exec(),
+  ]);
+
+  if (category === null) {
+    // No results.
+    const err = new Error("category not found");
+    err.status = 404;
+    return next(err);
+  }
+
+  res.render("category_form", {
+    title: "Update category",
+    category: category,
+    itemsWithinCategory: itemsWithinCategory
+  });
 });
 
+
 // Handle category update on POST.
-exports.category_update_post = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: category update POST");
-});
+exports.category_update_post = [
+  // Validate and sanitize fields.
+  body("name", "Category name must contain at least 3 characters")
+  .trim()
+  .isLength({ min: 3 })
+  .escape(),
+
+  // Process request after validation and sanitization.
+  asyncHandler(async (req, res, next) => {
+    // Extract the validation errors from a request.
+    const errors = validationResult(req);
+
+    // Update a category object with escaped and trimmed data.
+    const category = new Category({ 
+      name: req.body.name,
+      _id: req.params.id, // This is required, or a new ID will be assigned!
+    });
+
+    const itemsWithinCategory = await Item.find({category: req.params.id}).exec()
+
+    if (!errors.isEmpty()) {
+      // There are errors. Render the form again with sanitized values/error messages.
+      res.render("category_form", {
+        title: "Update Category",
+        category: category,
+        itemsWithinCategory: itemsWithinCategory,
+        errors: errors.array(),
+      });
+      return;
+    } else {
+      const updatedCategory = await Category.findByIdAndUpdate(req.params.id, category, {});
+      await Item.updateMany({ category: req.params.id }, { $set: { category: updatedCategory._id } }).exec();
+      res.redirect(updatedCategory.url);
+    }
+  }),
+];
+
