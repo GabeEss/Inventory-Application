@@ -207,10 +207,117 @@ exports.item_delete_post = asyncHandler(async (req, res, next) => {
 
 // Display item update form on GET.
 exports.item_update_get = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: item update GET");
+  // Get item, all categories, all suppliers.
+  const item = await Item.find({ category: req.params.id }).exec();
+  const allCategories = await Category.find({}, "name").sort({ name: 1 }).exec();
+  const allSuppliers = await Supplier.find({}, "name").sort({ name: 1 }).exec();
+
+  if (item === null) {
+    // No results.
+    const err = new Error("category not found");
+    err.status = 404;
+    return next(err);
+  }
+
+  res.render("item_form", {
+    title: "Update item",
+    item: item,
+    allCategories: allCategories,
+    allSuppliers: allSuppliers,
+  });
 });
 
 // Handle item update on POST.
-exports.item_update_post = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: item update POST");
-});
+exports.item_update_post = [
+  // Validate and sanitize the name field.
+  body("name")
+    .trim()
+    .isLength({ min: 1 })
+    .escape()
+    .withMessage("Name must be specified."),
+  body("description")
+    .trim()
+    .isLength({ min: 1 })
+    .escape()
+    .withMessage("Description must be specified."),
+  body("price")
+    .trim()
+    .notEmpty()
+    .withMessage("Price must be specified.")
+    .isNumeric()
+    .withMessage("Price must be a number."),
+  body("inStock")
+    .trim()
+    .notEmpty()
+    .withMessage("In stock must be specified.")
+    .isNumeric()
+    .withMessage("In stock must be a number."),
+    body("category")
+    .isMongoId()
+    .withMessage("Invalid category ID.")
+    .custom(async (value) => {
+      const category = await Category.findById(value);
+      if (!category) {
+        throw new Error("Invalid category.");
+      }
+    })
+    .notEmpty() // Added to ensure category is specified
+    .withMessage("Category must be specified."),
+    body("suppliers")
+    .custom(async (values) => {
+      // Convert to an array, handling both single and multiple values
+      const supplierIds = [].concat(values);
+
+      if (supplierIds.length < 1) {
+        throw new Error("At least one supplier must be selected.");
+      }
+
+      const invalidSuppliers = await Promise.all(
+      supplierIds.map(async (value) => {
+        const supplier = await Supplier.findById(value);
+        return !supplier;
+      })
+    );
+    if (invalidSuppliers.some((invalid) => invalid)) {
+      throw new Error("Invalid supplier.");
+    }
+    })
+    .withMessage("At least one valid supplier must be selected.")
+    .isMongoId({ each: true }) // Ensure each element in the array is a valid MongoDB ObjectId
+    .withMessage("Invalid supplier ID."),
+
+  // Process request after validation and sanitization.
+  asyncHandler(async (req, res, next) => {
+    // Extract the validation errors from a request.
+    const errors = validationResult(req);
+
+    // Create a item object with escaped and trimmed data.
+    const item = new Item({ 
+      name: req.body.name,
+      description: req.body.description,
+      price: req.body.price,
+      inStock: req.body.inStock,
+      category: req.body.category,
+      suppliers: req.body.suppliers,
+      _id: req.params.id, // This is required, or a new ID will be assigned!
+     });
+
+    if (!errors.isEmpty()) {
+      // There are errors. Render the form again with sanitized values/error messages.
+      const allCategories = await Category.find({}, "name").sort({ name: 1 }).exec();
+      const allSuppliers = await Supplier.find({}, "name").sort({ name: 1 }).exec();
+
+      res.render("item_form", {
+        title: "Update item",
+        item: item,
+        allCategories: allCategories,
+        allSuppliers: allSuppliers,
+        errors: errors.array(),
+      });
+      return;
+    } else {
+      const updatedItem = await Item.findByIdAndUpdate(req.params.id, item, {});
+      res.redirect(updatedItem.url);
+    }
+  }),
+];

@@ -134,10 +134,74 @@ exports.supplier_delete_post = asyncHandler(async (req, res, next) => {
 
 // Display supplier update form on GET.
 exports.supplier_update_get = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: supplier update GET");
+  // Get supplier, authors and genres for form.
+  const [ supplier, itemsWithSupplier ] = await Promise.all([
+    await Supplier.findById(req.params.id).exec(),
+    await Item.find({ suppliers: req.params.id }).exec(),
+  ]);
+
+  if (supplier === null) {
+    // No results.
+    const err = new Error("supplier not found");
+    err.status = 404;
+    return next(err);
+  }
+
+  res.render("supplier_form", {
+    title: "Update supplier",
+    supplier: supplier,
+    itemsWithSupplier: itemsWithSupplier,
+  });
 });
 
 // Handle supplier update on POST.
-exports.supplier_update_post = asyncHandler(async (req, res, next) => {
-  res.send("NOT IMPLEMENTED: supplier update POST");
-});
+exports.supplier_update_post = [
+  // Validate and sanitize the name field.
+  body("name")
+    .trim()
+    .isLength({ min: 1 })
+    .escape()
+    .withMessage("Supplier name must be specified."),
+  body("address")
+    .trim()
+    .isLength({ min: 1 })
+    .escape()
+    .withMessage("Supplier address must be specified."),
+  body("phone")
+    .trim()
+    .notEmpty()
+    .withMessage("Supplier phone number must be specified.")
+    .matches(/[0-9]{10}/)
+    .withMessage("Enter a 10-digit phone number (numbers only)."),
+
+  // Process request after validation and sanitization.
+  asyncHandler(async (req, res, next) => {
+    // Extract the validation errors from a request.
+    const errors = validationResult(req);
+
+    const itemsWithSupplier = await Item.find({ suppliers: req.params.id }).exec();
+
+    // Create a supplier object with escaped and trimmed data.
+    const supplier = new Supplier({ 
+      name: req.body.name,
+      address: req.body.address,
+      phone: req.body.phone,
+      _id: req.params.id, // This is required, or a new ID will be assigned!
+    });
+
+    if (!errors.isEmpty()) {
+      // There are errors. Render the form again with sanitized values/error messages.
+      res.render("supplier_form", {
+        title: "Create Supplier",
+        supplier: supplier,
+        itemsWithSupplier: itemsWithSupplier,
+        errors: errors.array(),
+      });
+      return;
+    } else {
+      const updatedSupplier = await Supplier.findByIdAndUpdate(req.params.id, supplier, {});
+      await Item.updateMany({ suppliers: req.params.id }, { $set: { suppliers: updatedSupplier._id } }).exec();
+      res.redirect(updatedSupplier.url);
+    }
+  }),
+];
