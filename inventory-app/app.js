@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
@@ -14,11 +16,13 @@ var app = express();
 const mongoose = require("mongoose");
 mongoose.set("strictQuery", false);
 
-const mongoDB = "mongodb+srv://admin_One:1wUTMhRdcqJzVEmn@inventorycluster0.jx0ndkd.mongodb.net/?retryWrites=true&w=majority";
+main().catch((err) => {
+  console.error("Error connecting to MongoDB:", err);
+  process.exit(1); // Exit the process if MongoDB connection fails
+});
 
-main().catch((err) => console.log(err));
 async function main() {
-  await mongoose.connect(mongoDB);
+  await mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 }
 
 // view engine setup
